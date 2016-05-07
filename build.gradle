@@ -4,16 +4,16 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.0'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.3.1'
     }
 }
 
+group 'smartthings'
+version = file('version.txt').text.trim()
+
 apply plugin: 'groovy'
-apply plugin: 'maven-publish'
 apply from: file('gradle/convention.gradle')
 apply from: file('gradle/publish.gradle')
-
-group 'smartthings'
 
 repositories {
     mavenLocal()

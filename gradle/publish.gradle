@@ -1,7 +1,6 @@
 apply plugin: 'maven-publish'
 apply plugin: 'com.jfrog.bintray'
 
-version = rootProject.file('version.txt').text.trim()
 ext.isSnapshot = version.endsWith("SNAPSHOT")
 
 
@@ -19,23 +18,6 @@ artifacts {
 	archives sourcesJar, javadocJar
 }
 
-def pomConfig = {
-	licenses {
-		license {
-			name 'The Apache Software License, Version 2.0'
-			url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-			distribution 'repo'
-		}
-	}
-	developers {
-		developer {
-			id 'charliek'
-			name 'Charlie Knudsen'
-			email 'charlie.knudsen@gmail.com'
-		}
-	}
-}
-
 publishing {
 	publications {
 		mavenJava(MavenPublication) {
@@ -44,10 +26,6 @@ publishing {
 			artifact javadocJar
 			pom.withXml {
 				def root = asNode()
-				// Add additional data into our pom file
-				root.appendNode('description', 'Opinionated kafka consumer')
-				root.children().last() + pomConfig
-
 				// Work around gradle bug that publishes compile dependencies as runtime
 				// http://discuss.gradle.org/t/maven-publish-plugin-generated-pom-making-dependency-scope-runtime/7494/10
 				root.dependencies.'*'.findAll() {
@@ -86,9 +64,9 @@ bintray {
 		licenses = ['Apache-2.0']
 		desc = 'Opinionated kafka consumer'
 		labels = ['kafka']
-		websiteUrl = 'https://github.com/charliek/konsumer'
-		issueTrackerUrl = 'https://github.com/charliek/konsumer/issues'
-		vcsUrl = 'https://github.com/charliek/konsumer.git'
+		websiteUrl = 'https://github.com/SmartThingsOSS/konsumer'
+		issueTrackerUrl = 'https://github.com/SmartThingsOSS/konsumer/issues'
+		vcsUrl = 'https://github.com/SmartThingsOSS/konsumer.git'
 		version {
 			name = project.version
 			vcsTag = project.version

@@ -1,5 +1,9 @@
 
 apply plugin: 'findbugs'
+apply plugin: "jacoco"
+
+sourceCompatibility = '1.7'
+targetCompatibility = '1.7'
 
 findbugs {
 	ignoreFailures = false
@@ -16,8 +20,11 @@ tasks.withType(FindBugs) {
 	}
 }
 
-sourceCompatibility = '1.7'
-targetCompatibility = '1.7'
+jacocoTestReport {
+	reports {
+		xml.enabled true
+	}
+}
 
 task wrapper(type: Wrapper) {
 	gradleVersion = "2.3"
