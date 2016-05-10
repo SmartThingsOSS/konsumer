@@ -46,7 +46,7 @@ if (isSnapshot) {
 						username smartThingsArtifactoryUserName
 						password smartThingsArtifactoryPassword
 					}
-					url "https://artifactory.smartthings.com/libs-snapshot-local"
+					url "https://smartthings.artifactoryonline.com/smartthings/libs-snapshot-local"
 				}
 			}
 		}
@@ -97,6 +97,7 @@ bintray {
 	pkg {
 		repo = 'maven'
 		name = 'smartthings.konsumer'
+		userOrg = 'smartthingsoss'
 		licenses = ['Apache-2.0']
 		desc = 'Opinionated kafka consumer'
 		labels = ['kafka']
