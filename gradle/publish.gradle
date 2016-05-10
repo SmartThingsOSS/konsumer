@@ -84,8 +84,8 @@ bintrayUpload { task ->
 	}
 	gradle.taskGraph.whenReady { taskGraph ->
 		if (taskGraph.hasTask(task)) {
-			task.user = bintrayUser
-			task.apiKey = bintrayKey
+			task.user = System.getenv('BINTRAY_USER') ?: ''
+			task.apiKey = System.getenv('BINTRAY_API_KEY') ?: ''
 		}
 	}
 }
