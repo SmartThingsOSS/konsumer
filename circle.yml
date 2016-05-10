@@ -14,3 +14,9 @@ test:
 
     # Archive the junit files
     - cp build/test-results/*.xml $CIRCLE_TEST_REPORTS/ || true
+
+deployment:
+  snapshot:
+    branch: master
+    commands:
+      - bin/publish.sh
