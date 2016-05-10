@@ -19,7 +19,6 @@ out/
 .idea_modules/
 .metadata
 .gradle
-bin/
 tmp/
 *.tmp
 *.bak
