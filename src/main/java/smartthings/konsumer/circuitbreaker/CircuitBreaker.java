@@ -1,8 +1,10 @@
 package smartthings.konsumer.circuitbreaker;
 
-import smartthings.konsumer.event.KonsumerEventListener;
+import smartthings.konsumer.KafkaListener;
 
 public interface CircuitBreaker {
+
+	void init(CircuitBreakerListener listener);
 
 	void blockIfOpen();
 
@@ -12,6 +14,6 @@ public interface CircuitBreaker {
 
 	void conditionalClose(String sourceId);
 
-	void addListener(KonsumerEventListener listener);
+	void destroy();
 
 }

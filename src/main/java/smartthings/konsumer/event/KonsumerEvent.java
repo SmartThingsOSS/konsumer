@@ -1,5 +1,5 @@
 package smartthings.konsumer.event;
 
 public enum KonsumerEvent {
-	RESUMED, STOPPED
+	STARTED, SUSPENDED, RESUMED, STOPPED
 }

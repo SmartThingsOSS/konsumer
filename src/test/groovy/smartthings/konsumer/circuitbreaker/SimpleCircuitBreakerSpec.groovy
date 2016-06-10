@@ -1,8 +1,6 @@
 package smartthings.konsumer.circuitbreaker
 
 import smartthings.konsumer.event.KonsumerEvent
-import smartthings.konsumer.event.KonsumerEventListener
-import smartthings.konsumer.util.SameThreadExecutionService
 import spock.lang.Specification
 
 
@@ -11,6 +9,8 @@ class SimpleCircuitBreakerSpec extends Specification {
 	def 'should set the circuit breaker to the open state after calling open'() {
 		given:
 		SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker()
+		CircuitBreakerListener listener = Mock()
+		circuitBreaker.init(listener)
 
 		when:
 		circuitBreaker.open(this.getClass().toString())
@@ -22,6 +22,8 @@ class SimpleCircuitBreakerSpec extends Specification {
 	def 'should close the circuit breaker if no other peers has also opened it'() {
 		given:
 		SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker()
+		CircuitBreakerListener listener = Mock()
+		circuitBreaker.init(listener)
 		circuitBreaker.open(this.getClass().toString())
 
 		when:
@@ -34,6 +36,8 @@ class SimpleCircuitBreakerSpec extends Specification {
 	def 'should not be able to close the circuit breaker if another peer has opened it'() {
 		given:
 		SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker()
+		CircuitBreakerListener listener = Mock()
+		circuitBreaker.init(listener)
 		circuitBreaker.open('trigger')
 		circuitBreaker.open('anotherTrigger')
 
@@ -47,6 +51,8 @@ class SimpleCircuitBreakerSpec extends Specification {
 	def 'should close circuit after all sources have tried to close it'() {
 		given:
 		SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker()
+		CircuitBreakerListener listener = Mock()
+		circuitBreaker.init(listener)
 		circuitBreaker.open('trigger')
 		circuitBreaker.open('anotherTrigger')
 
@@ -60,30 +66,30 @@ class SimpleCircuitBreakerSpec extends Specification {
 
 	def 'should notify listeners when the circuit breaker is opened'() {
 		given:
-		SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker(new SameThreadExecutionService())
-		KonsumerEventListener eventListener = Mock()
-		circuitBreaker.addListener(eventListener)
+		SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker()
+		CircuitBreakerListener listener = Mock()
+		circuitBreaker.init(listener)
 
 		when:
 		circuitBreaker.open(this.getClass().toString())
 
 		then:
-		1 * eventListener.eventNotification(KonsumerEvent.STOPPED)
+		1 * listener.opened()
 		0 * _
 	}
 
 	def 'should notify listeners when the circuit breaker is closed'() {
 		given:
-		SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker(new SameThreadExecutionService())
+		SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker()
+		CircuitBreakerListener listener = Mock()
+		circuitBreaker.init(listener)
 		circuitBreaker.open(this.getClass().toString())
-		KonsumerEventListener eventListener = Mock()
-		circuitBreaker.addListener(eventListener)
 
 		when:
 		circuitBreaker.conditionalClose(this.getClass().toString())
 
 		then:
-		1 * eventListener.eventNotification(KonsumerEvent.RESUMED)
+		1 * listener.closed()
 		0 * _
 	}
 

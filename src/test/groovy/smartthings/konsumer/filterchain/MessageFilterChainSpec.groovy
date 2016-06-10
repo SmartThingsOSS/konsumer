@@ -3,6 +3,8 @@ package smartthings.konsumer.filterchain
 import kafka.message.MessageAndMetadata
 import smartthings.konsumer.MessageProcessor
 import smartthings.konsumer.circuitbreaker.CircuitBreaker
+import smartthings.konsumer.event.KonsumerEvent
+import smartthings.konsumer.filters.BaseMessageFilter
 import spock.lang.Specification
 
 
@@ -14,10 +16,10 @@ class MessageFilterChainSpec extends Specification {
 
 	def 'should call message processor directly if there are no filters'() {
 		given:
-		MessageFilterChain filterChain = new MessageFilterChain(circuitBreaker, messageProcessor)
+		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor)
 
 		when:
-		filterChain.handle(messageAndMetadata)
+		filterChain.handle(messageAndMetadata, circuitBreaker)
 
 		then:
 		1 * messageProcessor.processMessage(messageAndMetadata)
@@ -27,8 +29,8 @@ class MessageFilterChainSpec extends Specification {
 	def 'should call every filter in the chain in order before calling the message processor'() {
 		given:
 		int counter = 0;
-		MessageFilterChain filterChain = new MessageFilterChain(circuitBreaker, messageProcessor,
-		new MessageFilter() {
+		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor,
+		new BaseMessageFilter() {
 			@Override
 			void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
 				assert counter == 0;
@@ -36,7 +38,7 @@ class MessageFilterChainSpec extends Specification {
 				ctx.next(messageAndMetadata)
 			}
 		},
-		new MessageFilter() {
+		new BaseMessageFilter() {
 			@Override
 			void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
 				assert counter == 1
@@ -46,7 +48,7 @@ class MessageFilterChainSpec extends Specification {
 		})
 
 		when:
-		filterChain.handle(messageAndMetadata)
+		filterChain.handle(messageAndMetadata, circuitBreaker)
 
 		then:
 		counter == 2
@@ -56,8 +58,8 @@ class MessageFilterChainSpec extends Specification {
 
 	def 'should not call message processor if filter does not invoke the next filter in the chain'() {
 		given:
-		MessageFilterChain filterChain = new MessageFilterChain(circuitBreaker, messageProcessor,
-		new MessageFilter() {
+		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor,
+		new BaseMessageFilter() {
 			@Override
 			void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
 				throw new RuntimeException()
@@ -65,7 +67,7 @@ class MessageFilterChainSpec extends Specification {
 		})
 
 		when:
-		filterChain.handle(messageAndMetadata)
+		filterChain.handle(messageAndMetadata, circuitBreaker)
 
 		then:
 		def e = thrown(RuntimeException)
@@ -76,8 +78,8 @@ class MessageFilterChainSpec extends Specification {
 		given:
 		int numTries = 3
 		int filterCounter = 0;
-		MessageFilterChain filterChain = new MessageFilterChain(circuitBreaker, messageProcessor,
-		new MessageFilter() {
+		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor,
+		new BaseMessageFilter() {
 			@Override
 			void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
 				for (int i = 0; i < numTries; i++) {
@@ -85,7 +87,7 @@ class MessageFilterChainSpec extends Specification {
 				}
 			}
 		},
-		new MessageFilter() {
+		new BaseMessageFilter() {
 			@Override
 			void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
 				filterCounter++
@@ -94,7 +96,7 @@ class MessageFilterChainSpec extends Specification {
 		})
 
 		when:
-		filterChain.handle(messageAndMetadata)
+		filterChain.handle(messageAndMetadata, circuitBreaker)
 
 		then:
 		filterCounter == numTries
@@ -104,8 +106,8 @@ class MessageFilterChainSpec extends Specification {
 
 	def 'should allow filters to open circuit breaker'() {
 		given:
-		MessageFilterChain filterChain = new MessageFilterChain(circuitBreaker, messageProcessor,
-		new MessageFilter() {
+		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor,
+		new BaseMessageFilter() {
 			@Override
 			void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
 				ctx.circuitBreaker.open('trigger')
@@ -113,7 +115,7 @@ class MessageFilterChainSpec extends Specification {
 		})
 
 		when:
-		filterChain.handle(messageAndMetadata)
+		filterChain.handle(messageAndMetadata, circuitBreaker)
 
 		then:
 		1 * circuitBreaker.open(_)
@@ -122,8 +124,8 @@ class MessageFilterChainSpec extends Specification {
 
 	def 'should allow filters to close circuit breaker'() {
 		given:
-		MessageFilterChain filterChain = new MessageFilterChain(circuitBreaker, messageProcessor,
-		new MessageFilter() {
+		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor,
+		new BaseMessageFilter() {
 			@Override
 			void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
 				ctx.circuitBreaker.conditionalClose('trigger')
@@ -131,10 +133,34 @@ class MessageFilterChainSpec extends Specification {
 		})
 
 		when:
-		filterChain.handle(messageAndMetadata)
+		filterChain.handle(messageAndMetadata, circuitBreaker)
 
 		then:
 		1 * circuitBreaker.conditionalClose(_)
+		0 * _
+	}
+
+	def 'should invoke lifecycle methods on all filters in the chain'() {
+		given:
+		MessageFilter filter1 = Mock()
+		MessageFilter filter2 = Mock()
+		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor, filter1, filter2)
+
+		when:
+		filterChain.getKonsumerEventListener().eventNotification(KonsumerEvent.STARTED)
+		filterChain.getKonsumerEventListener().eventNotification(KonsumerEvent.SUSPENDED)
+		filterChain.getKonsumerEventListener().eventNotification(KonsumerEvent.RESUMED)
+		filterChain.getKonsumerEventListener().eventNotification(KonsumerEvent.STOPPED)
+
+		then:
+		1 * filter1.init()
+		1 * filter1.suspended()
+		1 * filter1.resumed()
+		1 * filter1.destroy()
+		1 * filter2.init()
+		1 * filter2.suspended()
+		1 * filter2.resumed()
+		1 * filter2.destroy()
 		0 * _
 	}
 

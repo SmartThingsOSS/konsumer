@@ -41,7 +41,7 @@ class ThreadedMessageConsumerSpec extends Specification {
 		2 * streamIterator.hasNext() >> { cnt += 1; return cnt == 1 }
 		1 * circuitBreaker.blockIfOpen()
 		1 * streamIterator.next() >> messageAndMetadata
-		1 * filterChain.handle(messageAndMetadata)
+		1 * filterChain.handle(messageAndMetadata, circuitBreaker)
 		0 * _
 	}
 
@@ -61,7 +61,7 @@ class ThreadedMessageConsumerSpec extends Specification {
 		(numMessages + 1) * streamIterator.hasNext() >> { cnt += 1; return cnt <= numMessages }
 		numMessages * circuitBreaker.blockIfOpen()
 		numMessages * streamIterator.next() >> messageAndMetadata
-		numMessages * filterChain.handle(messageAndMetadata)
+		numMessages * filterChain.handle(messageAndMetadata, circuitBreaker)
 		0 * _
 	}
 
