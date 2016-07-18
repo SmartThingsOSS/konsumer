@@ -9,7 +9,7 @@ import smartthings.konsumer.filterchain.MessageFilter;
 import javax.annotation.concurrent.ThreadSafe;
 
 @ThreadSafe
-public class RetryMessageFilter implements MessageFilter {
+public class RetryMessageFilter extends BaseMessageFilter {
 
 	private final static Logger log = LoggerFactory.getLogger(RetryMessageFilter.class);
 

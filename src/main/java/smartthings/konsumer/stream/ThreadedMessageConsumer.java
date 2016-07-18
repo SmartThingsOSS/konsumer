@@ -70,7 +70,7 @@ public class ThreadedMessageConsumer implements Runnable {
 				@Override
 				public void run() {
 					try {
-						filterChain.handle(messageAndMetadata);
+						filterChain.handle(messageAndMetadata, circuitBreaker);
 					} catch (Exception e) {
 						handleException(messageAndMetadata, e);
 					} finally {
@@ -101,6 +101,6 @@ public class ThreadedMessageConsumer implements Runnable {
 	}
 
 	public void handleException(MessageAndMetadata<byte[], byte[]> messageAndMetadata, Throwable t) {
-		log.warn("Exception when processing message", t);
+		//log.warn("Exception when processing message", t);
 	}
 }

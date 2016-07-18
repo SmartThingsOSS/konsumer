@@ -36,7 +36,7 @@ public class SingleMessageConsumer implements Runnable {
 
 	private void processMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata) {
 		try {
-			filterChain.handle(messageAndMetadata);
+			filterChain.handle(messageAndMetadata, circuitBreaker);
 			return;
 		} catch (Exception e) {
 			log.error("Exception occurred during message processing", e);

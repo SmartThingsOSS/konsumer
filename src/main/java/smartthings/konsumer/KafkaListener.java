@@ -1,7 +1,9 @@
 package smartthings.konsumer;
 
 import smartthings.konsumer.circuitbreaker.CircuitBreaker;
+import smartthings.konsumer.circuitbreaker.CircuitBreakerListener;
 import smartthings.konsumer.circuitbreaker.SimpleCircuitBreaker;
+import smartthings.konsumer.event.KonsumerEvent;
 import smartthings.konsumer.event.KonsumerEventListener;
 import smartthings.konsumer.filterchain.MessageFilter;
 import smartthings.konsumer.filterchain.MessageFilterChain;
@@ -16,6 +18,7 @@ import kafka.javaapi.consumer.ConsumerConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.EventListener;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +33,7 @@ public class KafkaListener {
 	private final String topic;
 	private final ListenerConfig config;
 	private final CircuitBreaker circuitBreaker;
+	private final List<KonsumerEventListener> listeners = new CopyOnWriteArrayList<>();
 
 	public KafkaListener(ListenerConfig config) {
 		this.config = config;
@@ -65,14 +69,28 @@ public class KafkaListener {
 			log.error("Interrupted while waiting for shutdown of topic {}", topic, e);
 		}
 		streamProcessor.shutdown();
+		notifyEventListeners(KonsumerEvent.STOPPED);
 	}
 
 	public void run(MessageProcessor processor, MessageFilter... filters) {
-		MessageFilterChain filterChain = new MessageFilterChain(circuitBreaker, processor, filters);
+		MessageFilterChain filterChain = new MessageFilterChain(processor, filters);
+		registerEventListener(filterChain.getKonsumerEventListener());
 		Map<String, Integer> topicCountMap = new HashMap<>();
 		topicCountMap.put(topic, config.getPartitionThreads());
 		Map<String, List<KafkaStream<byte[], byte[]>>> consumerMap = consumer.createMessageStreams(topicCountMap);
 		List<KafkaStream<byte[], byte[]>> streams = consumerMap.get(topic);
+		circuitBreaker.init(new CircuitBreakerListener() {
+			@Override
+			public void opened() {
+				notifyEventListeners(KonsumerEvent.SUSPENDED);
+			}
+
+			@Override
+			public void closed() {
+				notifyEventListeners(KonsumerEvent.RESUMED);
+			}
+		});
+		notifyEventListeners(KonsumerEvent.STARTED);
 
 		log.info("Listening to kafka with {} partition threads", config.getPartitionThreads());
 		for (KafkaStream<byte[], byte[]> stream : streams) {
@@ -85,16 +103,26 @@ public class KafkaListener {
 		}
 	}
 
-	public void registerEventListener(KonsumerEventListener listener) {
-		circuitBreaker.addListener(listener);
+	private void notifyEventListeners(KonsumerEvent event) {
+		for (KonsumerEventListener listener : listeners) {
+			listener.eventNotification(event);
+		}
 	}
 
-	public void halt() {
-		circuitBreaker.open(this.getClass().toString());
+	public void registerEventListener(KonsumerEventListener listener) {
+		listeners.add(listener);
+	}
+
+	public void suspend() {
+		circuitBreaker.open(this.getClass().getCanonicalName());
+	}
+
+	public boolean isSuspended() {
+		return circuitBreaker.isOpen();
 	}
 
 	public void resume() {
-		circuitBreaker.conditionalClose(this.getClass().toString());
+		circuitBreaker.conditionalClose(this.getClass().getCanonicalName());
 	}
 
 	/**
