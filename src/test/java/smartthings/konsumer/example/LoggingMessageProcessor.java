@@ -7,11 +7,11 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 
-public class LoggingMessageProcessor implements MessageProcessor {
+public class LoggingMessageProcessor implements MessageProcessor<byte[], byte[], Void> {
 	private final static Logger log = LoggerFactory.getLogger(LoggingMessageProcessor.class);
 
 	@Override
-	public void processMessage(MessageAndMetadata<byte[], byte[]> bytes) throws Exception {
+	public Void processMessage(MessageAndMetadata<byte[], byte[]> bytes) throws Exception {
 		String content = new String(bytes.message(), StandardCharsets.UTF_8);
 		if (content.startsWith("FAIL")) {
 			log.warn("Thread {} - Failed message - {}",
@@ -20,6 +20,7 @@ public class LoggingMessageProcessor implements MessageProcessor {
 		} else {
 			log.info("Thread {} - Got message - {}",
 				Thread.currentThread().getName(), content);
+			return null;
 		}
 	}
 }

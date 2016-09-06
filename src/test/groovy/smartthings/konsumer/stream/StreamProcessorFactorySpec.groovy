@@ -15,7 +15,7 @@ class StreamProcessorFactorySpec extends Specification {
 				.build()
 
 		when:
-		StreamProcessor processor = new StreamProcessorFactory(config).processor;
+		StreamProcessor<byte[], byte[], Void> processor = new StreamProcessorFactory<>(config).processor;
 
 		then:
 		processor.class == expectedClass

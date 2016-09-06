@@ -1,5 +1,7 @@
 package smartthings.konsumer.example
 
+import kafka.serializer.StringDecoder
+import kafka.utils.VerifiableProperties
 import smartthings.konsumer.KafkaListener
 import smartthings.konsumer.ListenerConfig
 import org.slf4j.Logger
@@ -23,7 +25,9 @@ public class Main {
 				.zookeeper("127.0.0.1:2181")
 				.setProperty("auto.offset.reset", "smallest")
 				.build();
-		final KafkaListener consumer = new KafkaListener(config);
+		final KafkaListener<String, String, String> consumer = new KafkaListener(config,
+			new StringDecoder(new VerifiableProperties()),
+			new StringDecoder(new VerifiableProperties()));
 		// call the blocking run method so the application doesn't exit and
 		// stop the queue processing
 
@@ -34,7 +38,7 @@ public class Main {
 			}
 		})
 
-		consumer.runAndBlock(new LoggingMessageProcessor(),
+		consumer.runAndBlock(new StringMessageProcessor(),
 				new RetryMessageFilter(3)
 		);
 	}

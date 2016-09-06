@@ -11,12 +11,12 @@ import spock.lang.Specification
 class MessageFilterChainSpec extends Specification {
 
 	CircuitBreaker circuitBreaker = Mock()
-	MessageProcessor messageProcessor = Mock()
+	MessageProcessor<byte[], byte[], Void> messageProcessor = Mock()
 	MessageAndMetadata<byte[], byte[]> messageAndMetadata = Mock()
 
 	def 'should call message processor directly if there are no filters'() {
 		given:
-		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor)
+		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor, Collections.emptyList())
 
 		when:
 		filterChain.handle(messageAndMetadata, circuitBreaker)
@@ -29,23 +29,23 @@ class MessageFilterChainSpec extends Specification {
 	def 'should call every filter in the chain in order before calling the message processor'() {
 		given:
 		int counter = 0;
-		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor,
-		new BaseMessageFilter() {
+		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor, Arrays.asList(
+		new BaseMessageFilter<byte[], byte[], Void>() {
 			@Override
-			void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
+			Void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext<byte[], byte[], Void> ctx) throws Exception {
 				assert counter == 0;
 				counter++
 				ctx.next(messageAndMetadata)
 			}
 		},
-		new BaseMessageFilter() {
+		new BaseMessageFilter<byte[], byte[], Void>() {
 			@Override
-			void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
+			Void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext<byte[], byte[], Void> ctx) throws Exception {
 				assert counter == 1
 				counter++
 				ctx.next(messageAndMetadata)
 			}
-		})
+		}))
 
 		when:
 		filterChain.handle(messageAndMetadata, circuitBreaker)
@@ -58,13 +58,13 @@ class MessageFilterChainSpec extends Specification {
 
 	def 'should not call message processor if filter does not invoke the next filter in the chain'() {
 		given:
-		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor,
-		new BaseMessageFilter() {
+		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor, Arrays.asList(
+		new BaseMessageFilter<byte[], byte[], Void>() {
 			@Override
-			void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
+			Void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext<byte[], byte[], Void> ctx) throws Exception {
 				throw new RuntimeException()
 			}
-		})
+		}))
 
 		when:
 		filterChain.handle(messageAndMetadata, circuitBreaker)
@@ -78,22 +78,22 @@ class MessageFilterChainSpec extends Specification {
 		given:
 		int numTries = 3
 		int filterCounter = 0;
-		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor,
-		new BaseMessageFilter() {
+		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor, Arrays.asList(
+		new BaseMessageFilter<byte[], byte[], Void>() {
 			@Override
-			void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
+			Void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext<byte[], byte[], Void> ctx) throws Exception {
 				for (int i = 0; i < numTries; i++) {
 					ctx.next(messageAndMetadata)
 				}
 			}
 		},
-		new BaseMessageFilter() {
+		new BaseMessageFilter<byte[], byte[], Void>() {
 			@Override
-			void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
+			Void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext<byte[], byte[], Void> ctx) throws Exception {
 				filterCounter++
 				ctx.next(messageAndMetadata)
 			}
-		})
+		}))
 
 		when:
 		filterChain.handle(messageAndMetadata, circuitBreaker)
@@ -106,13 +106,13 @@ class MessageFilterChainSpec extends Specification {
 
 	def 'should allow filters to open circuit breaker'() {
 		given:
-		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor,
-		new BaseMessageFilter() {
+		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor, Arrays.asList(
+		new BaseMessageFilter<byte[], byte[], Void>() {
 			@Override
-			void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
+			Void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext<byte[], byte[], Void> ctx) throws Exception {
 				ctx.circuitBreaker.open('trigger')
 			}
-		})
+		}))
 
 		when:
 		filterChain.handle(messageAndMetadata, circuitBreaker)
@@ -124,13 +124,13 @@ class MessageFilterChainSpec extends Specification {
 
 	def 'should allow filters to close circuit breaker'() {
 		given:
-		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor,
-		new BaseMessageFilter() {
+		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor, Arrays.asList(
+		new BaseMessageFilter<byte[], byte[], Void>() {
 			@Override
-			void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
+			Void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext<byte[], byte[], Void> ctx) throws Exception {
 				ctx.circuitBreaker.conditionalClose('trigger')
 			}
-		})
+		}))
 
 		when:
 		filterChain.handle(messageAndMetadata, circuitBreaker)
@@ -144,7 +144,7 @@ class MessageFilterChainSpec extends Specification {
 		given:
 		MessageFilter filter1 = Mock()
 		MessageFilter filter2 = Mock()
-		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor, filter1, filter2)
+		MessageFilterChain filterChain = new MessageFilterChain(messageProcessor, Arrays.asList(filter1, filter2))
 
 		when:
 		filterChain.getKonsumerEventListener().eventNotification(KonsumerEvent.STARTED)

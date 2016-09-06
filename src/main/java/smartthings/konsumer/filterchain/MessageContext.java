@@ -3,9 +3,9 @@ package smartthings.konsumer.filterchain;
 import kafka.message.MessageAndMetadata;
 import smartthings.konsumer.circuitbreaker.CircuitBreaker;
 
-public interface MessageContext {
+public interface MessageContext<K, V, R> {
 
-	void next(MessageAndMetadata<byte[], byte[]> messageAndMetadata) throws Exception;
+	R next(MessageAndMetadata<K, V> messageAndMetadata) throws Exception;
 
 	CircuitBreaker getCircuitBreaker();
 

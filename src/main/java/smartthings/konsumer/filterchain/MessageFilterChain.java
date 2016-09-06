@@ -10,37 +10,37 @@ import smartthings.konsumer.event.KonsumerEventListener;
 
 import java.util.*;
 
-public class MessageFilterChain {
+public class MessageFilterChain<K, V, R> {
 	private final static Logger log = LoggerFactory.getLogger(MessageFilterChain.class);
 
-	private final MessageProcessor processor;
-	private final List<MessageFilter> filters;
+	private final MessageProcessor<K, V, R> processor;
+	private final List<MessageFilter<K, V, R>> filters;
 
-	public MessageFilterChain(final MessageProcessor processor, final MessageFilter... messageFilters) {
+	public MessageFilterChain(final MessageProcessor<K, V, R> processor, final List<MessageFilter<K, V, R>> messageFilters) {
 		this.processor = processor;
-		this.filters = Collections.unmodifiableList(new ArrayList<MessageFilter>(Arrays.asList(messageFilters)));
+		this.filters = Collections.unmodifiableList(new ArrayList<>(messageFilters)); //make defensive copy
 	}
 
-	public void handle(MessageAndMetadata<byte[], byte[]> originalMessageAndMetadata,
+	public R handle(MessageAndMetadata<K, V> originalMessageAndMetadata,
 					   final CircuitBreaker circuitBreaker) throws Exception {
 
-		MessageContext context = new MessageContext() {
+		MessageContext<K, V, R> context = new MessageContext<K, V, R>() {
 			private int counter = 0;
 
 			@Override
-			public void next(MessageAndMetadata<byte[], byte[]> messageAndMetadata) throws Exception {
+			public R next(MessageAndMetadata<K, V> messageAndMetadata) throws Exception {
 				if (filters.size() > counter) {
-					MessageFilter filter = filters.get(counter);
+					MessageFilter<K, V, R> filter = filters.get(counter);
 					log.debug("Calling filterchain # {} - {}", counter, filter.getClass().toString());
 					counter++;
 					try {
-						filter.handleMessage(messageAndMetadata, this);
+						return filter.handleMessage(messageAndMetadata, this);
 					} finally {
 						counter--;
 					}
 				} else {
 					log.debug("Calling processor # {} - {}", counter, processor.getClass().toString());
-					processor.processMessage(messageAndMetadata);
+					return processor.processMessage(messageAndMetadata);
 				}
 			}
 
@@ -50,7 +50,7 @@ public class MessageFilterChain {
 			}
 		};
 
-		context.next(originalMessageAndMetadata);
+		return context.next(originalMessageAndMetadata);
 
 	}
 
