@@ -1,7 +1,5 @@
 package smartthings.konsumer.circuitbreaker;
 
-import smartthings.konsumer.KafkaListener;
-
 public interface CircuitBreaker {
 
 	void init(CircuitBreakerListener listener);

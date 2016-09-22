@@ -4,7 +4,7 @@ import kafka.consumer.KafkaStream;
 import smartthings.konsumer.circuitbreaker.CircuitBreaker;
 import smartthings.konsumer.filterchain.MessageFilterChain;
 
-public interface StreamProcessor {
+public interface StreamProcessor<K, V, R> {
 
 	/**
 	 * Build a consumer for a kafka stream
@@ -13,7 +13,7 @@ public interface StreamProcessor {
 	 * @param circuitBreaker The circuitBreaker that is responsible for stopping the consumer if the circuit is opened.
 	 * @return a runnable that will be executed in a thread pool
 	 */
-	Runnable buildConsumer(KafkaStream<byte[], byte[]> stream, MessageFilterChain filterChain, CircuitBreaker circuitBreaker);
+	Runnable buildConsumer(KafkaStream<K, V> stream, MessageFilterChain<K, V, R> filterChain, CircuitBreaker circuitBreaker);
 
 	/**
 	 * This will be called on shutdown to do any clean up that may be necessary

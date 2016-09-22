@@ -14,11 +14,6 @@ import java.util.concurrent.Executor
 
 class ThreadedMessageConsumerSpec extends Specification {
 
-	KafkaStream<byte[], byte[]> stream = Mock()
-	ConsumerIterator<byte[], byte[]> streamIterator = Mock()
-	MessageFilterChain filterChain = Mock()
-	CircuitBreaker circuitBreaker = Mock()
-	MessageAndMetadata<byte[], byte[]> messageAndMetadata = Mock()
 	Executor currentTreadExecutor = new Executor() {
 		@Override
 		void execute(Runnable command) {
@@ -28,6 +23,11 @@ class ThreadedMessageConsumerSpec extends Specification {
 
 	def 'should verify circuit breaker state before consuming a message'() {
 		given:
+		KafkaStream<byte[], byte[]> stream = Mock()
+		ConsumerIterator<byte[], byte[]> streamIterator = Mock()
+		MessageFilterChain filterChain = Mock()
+		CircuitBreaker circuitBreaker = Mock()
+		MessageAndMetadata<byte[], byte[]> messageAndMetadata = Mock()
 		int cnt = 0
 		ListenerConfig config = ListenerConfig.builder().processingThreads(1).build()
 		ThreadedMessageConsumer consumer = new ThreadedMessageConsumer(stream, currentTreadExecutor, config,
@@ -47,6 +47,11 @@ class ThreadedMessageConsumerSpec extends Specification {
 
 	def 'should process every message'() {
 		given:
+		KafkaStream<byte[], byte[]> stream = Mock()
+		ConsumerIterator<byte[], byte[]> streamIterator = Mock()
+		MessageFilterChain filterChain = Mock()
+		CircuitBreaker circuitBreaker = Mock()
+		MessageAndMetadata<byte[], byte[]> messageAndMetadata = Mock()
 		int cnt = 0
 		int numMessages = 5
 		ListenerConfig config = ListenerConfig.builder().processingThreads(1).build()
@@ -62,6 +67,29 @@ class ThreadedMessageConsumerSpec extends Specification {
 		numMessages * circuitBreaker.blockIfOpen()
 		numMessages * streamIterator.next() >> messageAndMetadata
 		numMessages * filterChain.handle(messageAndMetadata, circuitBreaker)
+		0 * _
+	}
+
+	def 'should process messages with a decoder'() {
+		given:
+		KafkaStream<String, String> stream = Mock()
+		ConsumerIterator<String, String> streamIterator = Mock()
+		MessageFilterChain filterChain = Mock()
+		CircuitBreaker circuitBreaker = Mock()
+		MessageAndMetadata<String, String> messageAndMetadata = Mock()
+		ListenerConfig config = ListenerConfig.builder().processingThreads(1).build()
+		ThreadedMessageConsumer<String, String, Void> consumer = new ThreadedMessageConsumer<>(stream,
+			currentTreadExecutor, config, filterChain, circuitBreaker)
+
+		when:
+		consumer.run()
+
+		then:
+		1 * stream.iterator() >> streamIterator
+		2 * streamIterator.hasNext() >>> [true, false]
+		1 * circuitBreaker.blockIfOpen()
+		1 * streamIterator.next() >> messageAndMetadata
+		1 * filterChain.handle(messageAndMetadata, circuitBreaker)
 		0 * _
 	}
 

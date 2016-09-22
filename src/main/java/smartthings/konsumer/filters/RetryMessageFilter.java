@@ -9,7 +9,7 @@ import smartthings.konsumer.filterchain.MessageFilter;
 import javax.annotation.concurrent.ThreadSafe;
 
 @ThreadSafe
-public class RetryMessageFilter extends BaseMessageFilter {
+public class RetryMessageFilter<K, V, R> extends BaseMessageFilter<K, V, R> {
 
 	private final static Logger log = LoggerFactory.getLogger(RetryMessageFilter.class);
 
@@ -27,12 +27,11 @@ public class RetryMessageFilter extends BaseMessageFilter {
 	}
 
 	@Override
-	public void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception {
+	public R handleMessage(MessageAndMetadata<K, V> messageAndMetadata, MessageContext<K, V, R> ctx) throws Exception {
 		Exception latestException = null;
 		for (int i = 0; i < retryCount; i++) {
 			try {
-				ctx.next(messageAndMetadata);
-				return;
+				return ctx.next(messageAndMetadata);
 			} catch (Exception e) {
 				latestException = e;
 				log.warn("Message {} from partition {} failed to process.", messageAndMetadata.offset(), messageAndMetadata.partition(), e);
@@ -41,10 +40,11 @@ public class RetryMessageFilter extends BaseMessageFilter {
 		if (swallowErrorAfterRetries) {
 			log.warn("Processing of message {} from partition {} failed after {} attempts", messageAndMetadata.offset(),
 				messageAndMetadata.partition(), retryCount, latestException);
-			return;
+			return null;
 		}
 		if (latestException != null) {
 			throw latestException;
 		}
+		return null;
 	}
 }

@@ -8,15 +8,15 @@ import org.slf4j.LoggerFactory;
 import smartthings.konsumer.circuitbreaker.CircuitBreaker;
 import smartthings.konsumer.filterchain.MessageFilterChain;
 
-public class SingleMessageConsumer implements Runnable {
+public class SingleMessageConsumer<K, V, R> implements Runnable {
 
 	private final static Logger log = LoggerFactory.getLogger(SingleMessageConsumer.class);
 
-	private final KafkaStream<byte[], byte[]> stream;
-	private final MessageFilterChain filterChain;
+	private final KafkaStream<K, V> stream;
+	private final MessageFilterChain<K, V, R> filterChain;
 	private final CircuitBreaker circuitBreaker;
 
-	public SingleMessageConsumer(KafkaStream<byte[], byte[]> stream, MessageFilterChain filterChain,
+	public SingleMessageConsumer(KafkaStream<K, V> stream, MessageFilterChain<K, V, R> filterChain,
 								 CircuitBreaker circuitBreaker) {
 		this.stream = stream;
 		this.filterChain = filterChain;
@@ -25,16 +25,16 @@ public class SingleMessageConsumer implements Runnable {
 
 	@Override
 	public void run() {
-		ConsumerIterator<byte[], byte[]> it = stream.iterator();
+		ConsumerIterator<K, V> it = stream.iterator();
 		while (it.hasNext()) {
 			circuitBreaker.blockIfOpen();
-			MessageAndMetadata<byte[], byte[]> messageAndMetadata = it.next();
+			MessageAndMetadata<K, V> messageAndMetadata = it.next();
 			processMessage(messageAndMetadata);
 		}
 		log.warn("Shutting down listening thread");
 	}
 
-	private void processMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata) {
+	private void processMessage(MessageAndMetadata<K, V> messageAndMetadata) {
 		try {
 			filterChain.handle(messageAndMetadata, circuitBreaker);
 			return;

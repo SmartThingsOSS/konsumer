@@ -4,7 +4,7 @@ import kafka.message.MessageAndMetadata;
 import smartthings.konsumer.filterchain.MessageContext;
 import smartthings.konsumer.filterchain.MessageFilter;
 
-public abstract class BaseMessageFilter implements MessageFilter {
+public abstract class BaseMessageFilter<K, V, R> implements MessageFilter<K, V, R> {
 
 	@Override
 	public void init() {}
@@ -19,5 +19,5 @@ public abstract class BaseMessageFilter implements MessageFilter {
 	public void destroy() {}
 
 	@Override
-	public abstract void handleMessage(MessageAndMetadata<byte[], byte[]> message, MessageContext ctx) throws Exception;
+	public abstract R handleMessage(MessageAndMetadata<K, V> message, MessageContext<K, V, R> ctx) throws Exception;
 }

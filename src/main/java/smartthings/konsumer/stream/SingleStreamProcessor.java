@@ -4,12 +4,12 @@ import kafka.consumer.KafkaStream;
 import smartthings.konsumer.circuitbreaker.CircuitBreaker;
 import smartthings.konsumer.filterchain.MessageFilterChain;
 
-public class SingleStreamProcessor implements StreamProcessor {
+public class SingleStreamProcessor<K, V, R> implements StreamProcessor<K, V, R> {
 
 	@Override
-	public Runnable buildConsumer(KafkaStream<byte[], byte[]> stream, MessageFilterChain filterChain,
+	public Runnable buildConsumer(KafkaStream<K, V> stream, MessageFilterChain<K, V, R> filterChain,
 								  CircuitBreaker circuitBreaker) {
-		return new SingleMessageConsumer(stream, filterChain, circuitBreaker);
+		return new SingleMessageConsumer<>(stream, filterChain, circuitBreaker);
 	}
 
 	@Override

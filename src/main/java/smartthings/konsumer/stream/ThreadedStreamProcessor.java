@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.*;
 
-public class ThreadedStreamProcessor implements StreamProcessor {
+public class ThreadedStreamProcessor<K, V, R> implements StreamProcessor<K, V, R> {
 
 	private final static Logger log = LoggerFactory.getLogger(ThreadedStreamProcessor.class);
 
@@ -25,9 +25,9 @@ public class ThreadedStreamProcessor implements StreamProcessor {
 	}
 
 	@Override
-	public ThreadedMessageConsumer buildConsumer(KafkaStream<byte[], byte[]> stream, MessageFilterChain filterChain,
+	public ThreadedMessageConsumer<K, V, R> buildConsumer(KafkaStream<K, V> stream, MessageFilterChain<K, V, R> filterChain,
 												 CircuitBreaker circuitBreaker) {
-		return new ThreadedMessageConsumer(stream, processingExecutor, config, filterChain, circuitBreaker);
+		return new ThreadedMessageConsumer<>(stream, processingExecutor, config, filterChain, circuitBreaker);
 	}
 
 	private ExecutorService buildConsumerExecutor() {

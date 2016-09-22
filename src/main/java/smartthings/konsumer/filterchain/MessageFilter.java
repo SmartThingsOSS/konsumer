@@ -2,7 +2,7 @@ package smartthings.konsumer.filterchain;
 
 import kafka.message.MessageAndMetadata;
 
-public interface MessageFilter {
+public interface MessageFilter<K, V, R> {
 
 	void init();
 
@@ -12,6 +12,6 @@ public interface MessageFilter {
 
 	void destroy();
 
-	void handleMessage(MessageAndMetadata<byte[], byte[]> messageAndMetadata, MessageContext ctx) throws Exception;
+	R handleMessage(MessageAndMetadata<K, V> messageAndMetadata, MessageContext<K, V, R> ctx) throws Exception;
 
 }

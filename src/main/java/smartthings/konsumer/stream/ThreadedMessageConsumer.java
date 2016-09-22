@@ -13,13 +13,13 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 
-public class ThreadedMessageConsumer implements Runnable {
+public class ThreadedMessageConsumer<K, V, R> implements Runnable {
 	private final static Logger log = LoggerFactory.getLogger(ThreadedMessageConsumer.class);
 
 	/**
 	 * The kafka stream we will be pulling messages of of.
 	 */
-	private final KafkaStream<byte[], byte[]> stream;
+	private final KafkaStream<K, V> stream;
 
 	/**
 	 * The executor for message processing.
@@ -27,14 +27,9 @@ public class ThreadedMessageConsumer implements Runnable {
 	private final Executor messageExecutor;
 
 	/**
-	 * Configuration of this listener.
-	 */
-	private final ListenerConfig config;
-
-	/**
 	 * Chain of filters followed by the message processor.
 	 */
-	private final MessageFilterChain filterChain;
+	private final MessageFilterChain<K, V, R> filterChain;
 
 	/**
 	 * Semaphone used so we don't consumer messages faster than we can process them.
@@ -47,18 +42,17 @@ public class ThreadedMessageConsumer implements Runnable {
 	private final CircuitBreaker circuitBreaker;
 
 	public ThreadedMessageConsumer(
-			KafkaStream<byte[], byte[]> stream, Executor messageExecutor, ListenerConfig config,
-			MessageFilterChain filterChain, CircuitBreaker circuitBreaker
+			KafkaStream<K, V> stream, Executor messageExecutor, ListenerConfig config,
+			MessageFilterChain<K, V, R> filterChain, CircuitBreaker circuitBreaker
 	) {
 		this.stream = stream;
 		this.messageExecutor = messageExecutor;
-		this.config = config;
 		this.filterChain = filterChain;
 		this.taskSemaphone = new Semaphore(config.getProcessingThreads());
 		this.circuitBreaker = circuitBreaker;
 	}
 
-	private void submitTask(final MessageAndMetadata<byte[], byte[]> messageAndMetadata) throws InterruptedException {
+	private void submitTask(final MessageAndMetadata<K, V> messageAndMetadata) throws InterruptedException {
 		try {
 			taskSemaphone.acquire();
 		} catch (InterruptedException e) {
@@ -86,10 +80,10 @@ public class ThreadedMessageConsumer implements Runnable {
 
 	@Override
 	public void run() {
-		ConsumerIterator<byte[], byte[]> it = stream.iterator();
+		ConsumerIterator<K, V> it = stream.iterator();
 		while (it.hasNext()) {
 			circuitBreaker.blockIfOpen();
-			MessageAndMetadata<byte[], byte[]> messageAndMetadata = it.next();
+			MessageAndMetadata<K, V> messageAndMetadata = it.next();
 			try {
 				submitTask(messageAndMetadata);
 			} catch (Exception e) {
@@ -100,7 +94,7 @@ public class ThreadedMessageConsumer implements Runnable {
 		log.warn("Shutting down listening thread");
 	}
 
-	public void handleException(MessageAndMetadata<byte[], byte[]> messageAndMetadata, Throwable t) {
+	private void handleException(MessageAndMetadata<K, V> messageAndMetadata, Throwable t) {
 		//log.warn("Exception when processing message", t);
 	}
 }
