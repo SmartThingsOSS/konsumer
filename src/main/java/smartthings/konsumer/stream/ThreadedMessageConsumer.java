@@ -5,7 +5,6 @@ import kafka.consumer.KafkaStream;
 import kafka.message.MessageAndMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import smartthings.konsumer.ListenerConfig;
 import smartthings.konsumer.circuitbreaker.CircuitBreaker;
 import smartthings.konsumer.filterchain.MessageFilterChain;
 
@@ -32,9 +31,9 @@ public class ThreadedMessageConsumer<K, V, R> implements Runnable {
 	private final MessageFilterChain<K, V, R> filterChain;
 
 	/**
-	 * Semaphone used so we don't consumer messages faster than we can process them.
+	 * Semaphore used so we don't consumer messages faster than we can process them.
 	 */
-	private final Semaphore taskSemaphone;
+	private final Semaphore taskSemaphore;
 
 	/**
 	 * Circuit breaker to stop processing of messages.
@@ -42,19 +41,19 @@ public class ThreadedMessageConsumer<K, V, R> implements Runnable {
 	private final CircuitBreaker circuitBreaker;
 
 	public ThreadedMessageConsumer(
-			KafkaStream<K, V> stream, Executor messageExecutor, ListenerConfig config,
+			KafkaStream<K, V> stream, Executor messageExecutor,  Semaphore taskSemaphore,
 			MessageFilterChain<K, V, R> filterChain, CircuitBreaker circuitBreaker
 	) {
 		this.stream = stream;
 		this.messageExecutor = messageExecutor;
+		this.taskSemaphore = taskSemaphore;
 		this.filterChain = filterChain;
-		this.taskSemaphone = new Semaphore(config.getProcessingThreads());
 		this.circuitBreaker = circuitBreaker;
 	}
 
 	private void submitTask(final MessageAndMetadata<K, V> messageAndMetadata) throws InterruptedException {
 		try {
-			taskSemaphone.acquire();
+			taskSemaphore.acquire();
 		} catch (InterruptedException e) {
 			log.warn("Interrupted while trying to submit task to consumer.", e);
 			throw e;
@@ -68,7 +67,7 @@ public class ThreadedMessageConsumer<K, V, R> implements Runnable {
 					} catch (Exception e) {
 						handleException(messageAndMetadata, e);
 					} finally {
-						taskSemaphone.release();
+						taskSemaphore.release();
 					}
 				}
 			});

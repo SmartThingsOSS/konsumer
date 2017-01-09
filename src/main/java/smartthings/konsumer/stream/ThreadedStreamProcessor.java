@@ -17,17 +17,19 @@ public class ThreadedStreamProcessor<K, V, R> implements StreamProcessor<K, V, R
 	private final ExecutorService processingExecutor;
 	private final ListenerConfig config;
 	private final String topic;
+	private final Semaphore taskSemaphore;
 
 	public ThreadedStreamProcessor(ListenerConfig config) {
 		this.config = config;
 		processingExecutor = buildConsumerExecutor();
 		topic = config.getTopic();
+		taskSemaphore = new Semaphore(config.getProcessingThreads());
 	}
 
 	@Override
 	public ThreadedMessageConsumer<K, V, R> buildConsumer(KafkaStream<K, V> stream, MessageFilterChain<K, V, R> filterChain,
 												 CircuitBreaker circuitBreaker) {
-		return new ThreadedMessageConsumer<>(stream, processingExecutor, config, filterChain, circuitBreaker);
+		return new ThreadedMessageConsumer<>(stream, processingExecutor, taskSemaphore, filterChain, circuitBreaker);
 	}
 
 	private ExecutorService buildConsumerExecutor() {
